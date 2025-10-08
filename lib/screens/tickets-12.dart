@@ -35,9 +35,17 @@ class _Tickets12State extends State<Tickets12> {
 
   Widget _buildTicketCard(int ticketId) {
     final ticketNumbers = _generateTicketNumbers(ticketId);
+    final isSelected = widget.selectedTicketIds.contains(ticketId);
+
     return Card(
       color: const Color.fromARGB(255, 206, 205, 205),
       margin: const EdgeInsets.all(8.0),
+      shape: isSelected
+          ? RoundedRectangleBorder(
+              side: const BorderSide(color: Colors.blue, width: 2),
+              borderRadius: BorderRadius.circular(8),
+            )
+          : null,
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(
@@ -85,7 +93,7 @@ class _Tickets12State extends State<Tickets12> {
         width: double.infinity,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: widget.selectedTicketIds.map((id) => _buildTicketCard(id)).toList(),
+          children: List.generate(12, (index) => _buildTicketCard(index + 1)),
         ),
       ),
     );

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:pbp/screens/game_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import 'login_screen.dart';
+import 'game_screen.dart';
 import 'game_setup_screen.dart';
 import 'join_game_screen.dart';
 
@@ -25,11 +25,9 @@ class AdminHomeScreen extends StatelessWidget {
     }
   }
 
-  // Placeholder for canceling the game
   Future<void> _cancelGame(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('hasCreatedGame');
-    // Add backend call or logic to cancel the game here
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Game cancelled successfully')),
@@ -37,7 +35,6 @@ class AdminHomeScreen extends StatelessWidget {
     }
   }
 
-  // Get current user from SharedPreferences
   Future<User?> _getCurrentUser() async {
     final prefs = await SharedPreferences.getInstance();
     final phoneNumber = prefs.getString('user_phone');
@@ -47,7 +44,6 @@ class AdminHomeScreen extends StatelessWidget {
     return null;
   }
 
-  // Check if user has created a game
   Future<bool> _hasCreatedGame() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool('hasCreatedGame') ?? false;
@@ -98,7 +94,7 @@ class AdminHomeScreen extends StatelessWidget {
                               MaterialPageRoute(
                                 builder: (context) => const GameScreen(
                                   roomId: 'created_game_id', // Placeholder; replace with actual ID
-                                  ticketCount: 1,
+                                  ticketIds: [1, 2, 3, 4, 5, 6], // Default to T1-T6; adjust as needed
                                 ),
                               ),
                             );

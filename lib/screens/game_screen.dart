@@ -10,12 +10,12 @@ import '../utils/name_mapper.dart';
 
 class GameScreen extends StatefulWidget {
   final String roomId;
-  final int ticketCount;
+  final List<int> ticketIds;
 
   const GameScreen({
     Key? key,
     required this.roomId,
-    required this.ticketCount,
+    required this.ticketIds,
   }) : super(key: key);
 
   @override
@@ -34,16 +34,17 @@ class _GameScreenState extends State<GameScreen> {
   @override
   void initState() {
     super.initState();
-    tickets = List.generate(widget.ticketCount, (index) => GameTicket(
-      id: index + 1,
-      playerName: 'Player ${index + 1}',
-      numbers: _generateTicketNumbers(),
-      isClaimed: false,
-      purchaseTime: DateTime.now(),
-    ));
+    tickets = widget.ticketIds.map((id) => GameTicket(
+          id: id,
+          playerName: 'Player $id',
+          numbers: _generateTicketNumbers(id),
+          isClaimed: false,
+          purchaseTime: DateTime.now(),
+        )).toList();
   }
 
-  List<List<int>> _generateTicketNumbers() {
+  List<List<int>> _generateTicketNumbers(int seed) {
+    final random = Random(seed);
     final List<List<int>> ticketNumbers = [];
     final Set<int> usedNumbers = {};
     for (int i = 0; i < 5; i++) {
@@ -51,7 +52,7 @@ class _GameScreenState extends State<GameScreen> {
       for (int j = 0; j < 5; j++) {
         int number;
         do {
-          number = 1 + _random.nextInt(90);
+          number = 1 + random.nextInt(90);
         } while (usedNumbers.contains(number));
         usedNumbers.add(number);
         row.add(number);
@@ -152,7 +153,7 @@ class _GameScreenState extends State<GameScreen> {
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               color: isMarked ? Colors.white : Colors.black87,
-                              fontSize: 12, // Increased for better readability
+                              fontSize: 12,
                             ),
                           ),
                         ),
@@ -215,7 +216,6 @@ class _GameScreenState extends State<GameScreen> {
 
     setState(() {
       calledNumbers.add(nextNumber);
-      // Sort only if needed for display, not every call
     });
 
     if (isNumberCalling && calledNumbers.length < 90) {
@@ -226,6 +226,7 @@ class _GameScreenState extends State<GameScreen> {
   @override
   Widget build(BuildContext context) {
     final recentNumber = calledNumbers.isNotEmpty ? calledNumbers.last : null;
+    final ticketCount = widget.ticketIds.length;
 
     return Scaffold(
       appBar: AppBar(
@@ -233,15 +234,14 @@ class _GameScreenState extends State<GameScreen> {
         title: Row(
           children: [
             Text(
-              '${widget.roomId} • ${widget.ticketCount} ${widget.ticketCount == 1 ? 'Ticket' : 'Tickets'}',
+              '${widget.roomId} • $ticketCount ${ticketCount == 1 ? 'Ticket' : 'Tickets'}',
               style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
             ),
           ],
         ),
         actions: [
           if (calledNumbers.isNotEmpty) ...[
-            Text("(${calledNumbers.length}/90)",
-                style: const TextStyle(color: Colors.white)),
+            Text("(${calledNumbers.length}/90)", style: const TextStyle(color: Colors.white)),
             const SizedBox(width: 8),
             TextButton(
               onPressed: _showAllNumbers,
@@ -281,4 +281,3 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 }
-// ignore_for_file: file_names

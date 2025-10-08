@@ -1,17 +1,21 @@
 // ignore_for_file: file_names
 
 import 'package:flutter/material.dart';
+import 'dart:math';
 import '../utils/name_mapper.dart';
 
 class Tickets12 extends StatefulWidget {
-  const Tickets12({super.key});
+  final List<int> selectedTicketIds;
+
+  const Tickets12({super.key, required this.selectedTicketIds});
 
   @override
   State<Tickets12> createState() => _Tickets12State();
 }
 
 class _Tickets12State extends State<Tickets12> {
-  List<List<int>> _generateTicketNumbers(int ticketId) {
+  List<List<int>> _generateTicketNumbers(int seed) {
+    final random = Random(seed);
     final List<List<int>> ticketNumbers = [];
     final Set<int> usedNumbers = {};
     for (int i = 0; i < 5; i++) {
@@ -19,7 +23,7 @@ class _Tickets12State extends State<Tickets12> {
       for (int j = 0; j < 5; j++) {
         int number;
         do {
-          number = 1 + (DateTime.now().millisecondsSinceEpoch % 90); // Simplified random for demo
+          number = 1 + random.nextInt(90);
         } while (usedNumbers.contains(number));
         usedNumbers.add(number);
         row.add(number);
@@ -45,8 +49,7 @@ class _Tickets12State extends State<Tickets12> {
             ),
             const SizedBox(height: 8),
             Table(
-              border: TableBorder.all( color: Colors.black,),
-                 
+              border: TableBorder.all(color: Colors.black),
               children: ticketNumbers.map<TableRow>((row) {
                 return TableRow(
                   children: row.map<Widget>((number) {
@@ -75,7 +78,6 @@ class _Tickets12State extends State<Tickets12> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -83,7 +85,7 @@ class _Tickets12State extends State<Tickets12> {
         width: double.infinity,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: List.generate(12, (index) => _buildTicketCard(index + 1)),
+          children: widget.selectedTicketIds.map((id) => _buildTicketCard(id)).toList(),
         ),
       ),
     );

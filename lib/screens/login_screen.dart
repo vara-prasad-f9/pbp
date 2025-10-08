@@ -88,7 +88,6 @@ class _LoginScreenState extends State<LoginScreen> {
       if (user.isAdmin) {
         // Check if this admin has an active room
         final roomId = await prefs.getString('admin_room_id');
-        final ticketCount = prefs.getInt('admin_room_ticket_count') ?? 0;
         
         if (roomId != null && roomId.isNotEmpty) {
           // Admin has an active room, show game dashboard
@@ -97,7 +96,6 @@ class _LoginScreenState extends State<LoginScreen> {
             MaterialPageRoute(
               builder: (_) => AdminGameDashboard(
                 roomId: roomId,
-                ticketCount: ticketCount,
               ),
             ),
           );

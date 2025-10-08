@@ -1,4 +1,6 @@
-// ignore_for_file: file_names, unused_field, unused_element, sort_child_properties_last, prefer_final_fields, duplicate_ignore, deprecated_member_use
+// ignore_for_file: file_names, unused_field, unused_element, sort_child_properties_last, prefer_final_fields, duplicate_ignore, deprecated_member_use, unused_import, unnecessary_brace_in_string_interps
+
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:pbp/screens/game_screen.dart';
@@ -17,9 +19,7 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
   final _formKey = GlobalKey<FormState>();
   final _roomIdController = TextEditingController();
   int _selectedTickets = 1;
-  bool _showTicketGrid = false;
-  List<GameTicket> _tickets = [];
-  int? _selectedRadioValue; // For radio button selection
+  int? _selectedRadioValue; // For radio button selection (1 for T1-T6, 2 for T7-T12)
   List<int> _selectedCheckboxes = []; // For checkbox selections
 
   @override
@@ -28,20 +28,8 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
     super.dispose();
   }
 
-  void _generateTickets() {
-    _tickets = List.generate(_selectedTickets, (index) => GameTicket(
-      id: index + 1,
-      playerName: 'Player ${index + 1}',
-      numbers: _generateTicketNumbers(),
-      isClaimed: false,
-      purchaseTime: DateTime.now(),
-    ));
-    setState(() {
-      _showTicketGrid = true;
-    });
-  }
-
-  List<List<int>> _generateTicketNumbers() {
+  List<List<int>> _generateTicketNumbers(int seed) {
+    final random = Random(seed);
     final List<List<int>> ticketNumbers = [];
     final Set<int> usedNumbers = {};
     for (int i = 0; i < 5; i++) {
@@ -49,7 +37,7 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
       for (int j = 0; j < 5; j++) {
         int number;
         do {
-          number = 1 + (DateTime.now().millisecondsSinceEpoch % 90); // Simplified random for demo
+          number = 1 + random.nextInt(90);
         } while (usedNumbers.contains(number));
         usedNumbers.add(number);
         row.add(number);
@@ -59,55 +47,12 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
     return ticketNumbers;
   }
 
-  Widget _buildTicketCard(GameTicket ticket) {
-    return Card(
-      margin: const EdgeInsets.all(8.0),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Ticket #${ticket.id}',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-            Table(
-              border: TableBorder.all(),
-              children: ticket.numbers.map<TableRow>((row) {
-                return TableRow(
-                  children: row.map<Widget>((number) {
-                    return Container(
-                      height: 45,
-                      alignment: Alignment.center,
-                      child: Center(
-                        child: Text(
-                          NameMapper.getName(number),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                            fontSize: 8,
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _showCustomDropdown() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return StatefulBuilder(
-          builder: (context, setState) {
+          builder: (context, dialogSetState) {
             return AlertDialog(
               title: const Text('Select Tickets'),
               content: SingleChildScrollView(
@@ -117,32 +62,30 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
                   children: [
                     RadioListTile<int>(
                       title: const Text('T1-to-T6'),
-                      value: 6,
+                      value: 1,
                       groupValue: _selectedRadioValue,
                       onChanged: (int? value) {
-                        setState(() {
+                        dialogSetState(() {
                           _selectedRadioValue = value;
                           _selectedCheckboxes.clear();
-                          _selectedTickets = value ?? 1;
+                          _selectedTickets = 6;
                         });
-                        // Update parent state before closing
-                        setState(() {});
                         Navigator.pop(context);
+                        setState(() {}); // Update parent state
                       },
                     ),
                     RadioListTile<int>(
-                      title: const Text('T6-to-T12'),
-                      value: 12,
+                      title: const Text('T7-to-T12'),
+                      value: 2,
                       groupValue: _selectedRadioValue,
                       onChanged: (int? value) {
-                        setState(() {
+                        dialogSetState(() {
                           _selectedRadioValue = value;
                           _selectedCheckboxes.clear();
-                          _selectedTickets = value ?? 1;
+                          _selectedTickets = 6;
                         });
-                        // Update parent state before closing
-                        setState(() {});
                         Navigator.pop(context);
+                        setState(() {}); // Update parent state
                       },
                     ),
                     const Padding(
@@ -155,14 +98,15 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
                         title: Text('T$ticketNum'),
                         value: _selectedCheckboxes.contains(ticketNum),
                         onChanged: (bool? value) {
-                          setState(() {
+                          dialogSetState(() {
                             if (value == true) {
+                              if (_selectedCheckboxes.length >= 6) return; // Cap at 6
                               _selectedCheckboxes.add(ticketNum);
                               _selectedRadioValue = null; // Deselect radio on checkbox selection
                             } else {
                               _selectedCheckboxes.remove(ticketNum);
                             }
-                            _selectedTickets = _selectedCheckboxes.length > 6 ? 6 : _selectedCheckboxes.length;
+                            _selectedTickets = _selectedCheckboxes.length;
                             if (_selectedTickets == 0) _selectedTickets = 1;
                           });
                         },
@@ -175,9 +119,8 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
               actions: [
                 TextButton(
                   onPressed: () {
-                    // Update parent state when closing dialog
-                    setState(() {});
                     Navigator.pop(context);
+                    setState(() {}); // Update parent state when closing
                   },
                   child: const Text('Close'),
                 ),
@@ -191,6 +134,14 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
 
   @override
   Widget build(BuildContext context) {
+    List<int> selectedTicketIds = [];
+    if (_selectedCheckboxes.isNotEmpty) {
+      selectedTicketIds = List.from(_selectedCheckboxes)..sort();
+    } else if (_selectedRadioValue != null) {
+      final start = _selectedRadioValue == 1 ? 1 : 7;
+      selectedTicketIds = List.generate(6, (i) => start + i);
+    }
+
     return Scaffold(
       body: Padding(
         padding: const EdgeInsets.fromLTRB(15, 70, 15, 70),
@@ -228,8 +179,8 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        _selectedCheckboxes.isNotEmpty || _selectedRadioValue != null
-                            ? 'Your selected $_selectedTickets so on tickets...'
+                        selectedTicketIds.isNotEmpty
+                            ? 'Your selected ${_selectedTickets} tickets...'
                             : 'Select Tickets (Max 6):',
                       ),
                       const Icon(Icons.arrow_drop_down),
@@ -237,25 +188,25 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
                   ),
                 ),
               ),
-              if (_selectedCheckboxes.isNotEmpty || _selectedRadioValue != null)
+              if (selectedTicketIds.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Wrap(
                     spacing: 20.0, // Space between pairs
                     runSpacing: 4.0, // Space between rows
                     children: [
-                      for (int i = 0; i < (_selectedCheckboxes.isNotEmpty ? _selectedCheckboxes.length : _selectedRadioValue ?? 0); i += 2)
+                      for (int i = 0; i < selectedTicketIds.length; i += 2)
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              'T${_selectedCheckboxes.isNotEmpty ? _selectedCheckboxes[i] : i + 1}',
+                              'T${selectedTicketIds[i]}',
                               style: const TextStyle(color: Colors.red, fontSize: 12),
                             ),
                             const SizedBox(width: 10), // Space between T1 and T2
-                            if (i + 1 < (_selectedCheckboxes.isNotEmpty ? _selectedCheckboxes.length : _selectedRadioValue ?? 0))
+                            if (i + 1 < selectedTicketIds.length)
                               Text(
-                                'T${_selectedCheckboxes.isNotEmpty ? _selectedCheckboxes[i + 1] : i + 2}',
+                                'T${selectedTicketIds[i + 1]}',
                                 style: const TextStyle(color: Colors.red, fontSize: 12),
                               ),
                           ],
@@ -265,7 +216,7 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
                 ),
               const SizedBox(height: 12),
               Expanded(
-                child: Tickets12(),
+                child: Tickets12(selectedTicketIds: selectedTicketIds),
               ),
               const SizedBox(height: 16),
             ],
@@ -275,20 +226,27 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           if (_formKey.currentState!.validate()) {
-            // Check if at least one ticket is selected
-            if (_selectedTickets < 1 || (_selectedCheckboxes.isEmpty && _selectedRadioValue == null)) {
+            List<int> selectedTicketIds = [];
+            if (_selectedCheckboxes.isNotEmpty) {
+              selectedTicketIds = List.from(_selectedCheckboxes)..sort();
+            } else if (_selectedRadioValue != null) {
+              final start = _selectedRadioValue == 1 ? 1 : 7;
+              selectedTicketIds = List.generate(6, (i) => start + i);
+            }
+
+            if (selectedTicketIds.isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Please select at least one ticket.')),
               );
               return;
             }
-            _generateTickets();
+
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
                 builder: (context) => GameScreen(
                   roomId: _roomIdController.text.trim(),
-                  ticketCount: _selectedTickets,
+                  ticketIds: selectedTicketIds,
                 ),
               ),
             );

@@ -7,12 +7,10 @@ import 'admin_home_screen.dart';
 
 class AdminGameDashboard extends StatelessWidget {
   final String roomId;
-  final int ticketCount;
 
   const AdminGameDashboard({
     Key? key,
     required this.roomId,
-    required this.ticketCount,
   }) : super(key: key);
 
   Future<void> _endGame(BuildContext context) async {
@@ -36,7 +34,6 @@ class AdminGameDashboard extends StatelessWidget {
     );
 
     if (confirmed == true) {
-      // Clear any game-related data from shared preferences
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('current_room_id');
       
@@ -79,19 +76,21 @@ class AdminGameDashboard extends StatelessWidget {
             // View Game Details Button
             ElevatedButton.icon(
               onPressed: () {
+                // Example: Pass a list of ticket IDs (e.g., dynamically determined or default)
+                List<int> ticketIds = [1, 2, 3, 4, 5, 6]; // Default to T1-T6; replace with actual selection logic
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => GameScreen(
                       roomId: roomId,
-                      ticketCount: ticketCount,
+                      ticketIds: ticketIds,
                     ),
                   ),
                 );
               },
-              icon: const Icon(Icons.visibility, size: 24),
+              icon: const Icon(Icons.play_arrow, size: 24),
               label: const Text(
-                'View Game Details',
+                'Start Game',
                 style: TextStyle(fontSize: 18),
               ),
               style: ElevatedButton.styleFrom(
@@ -103,7 +102,6 @@ class AdminGameDashboard extends StatelessWidget {
             // View Players Button
             ElevatedButton.icon(
               onPressed: () {
-          
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Players list will be shown here')),
                 );

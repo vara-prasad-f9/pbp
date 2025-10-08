@@ -1,10 +1,11 @@
-// ignore_for_file: prefer_final_fields, use_super_parameters, library_private_types_in_public_api, deprecated_member_use, duplicate_ignore
+// ignore_for_file: prefer_final_fields, use_super_parameters, library_private_types_in_public_api, deprecated_member_use, duplicate_ignore, avoid_print
 
 // ignore_for_file: use_super_parameters, library_private_types_in_public_api
 
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart'; // Import TTS package
 import '../models/game_ticket.dart';
 import '../utils/name_mapper.dart';
 
@@ -30,10 +31,14 @@ class _GameScreenState extends State<GameScreen> {
   Timer? _numberCallTimer;
   final Random _random = Random();
   Set<int> markedNumbers = {};
+  late FlutterTts flutterTts; // Initialize TTS lazily
+  bool isTtsReady = false; // Track TTS readiness
 
   @override
   void initState() {
     super.initState();
+    flutterTts = FlutterTts(); // Lazy initialization
+    _initializeTts(); // Initialize TTS settings
     tickets = widget.ticketIds.map((id) => GameTicket(
           id: id,
           playerName: 'Player $id',
@@ -41,6 +46,29 @@ class _GameScreenState extends State<GameScreen> {
           isClaimed: false,
           purchaseTime: DateTime.now(),
         )).toList();
+  }
+
+  // Initialize TTS settings with readiness check and error handling
+  Future<void> _initializeTts() async {
+    try {
+      // Wait for plugin to be registered
+      await Future.delayed(const Duration(milliseconds: 1000)); // Increased delay
+      await flutterTts.getLanguages; // Check if TTS is available
+      isTtsReady = true;
+      await flutterTts.setLanguage("en-US"); // Set language (e.g., English US)
+      await flutterTts.setSpeechRate(0.5); // Adjust speed (0.5 is slower, 1.0 is normal)
+      await flutterTts.setVolume(1.0); // Set volume (0.0 to 1.0)
+      await flutterTts.setPitch(1.0); // Set pitch
+      print("TTS Initialized Successfully");
+    } catch (e) {
+      isTtsReady = false;
+      print("TTS Initialization Error: $e"); // Log error for debugging
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('TTS initialization failed. Voice may not work. Check device settings.')),
+        );
+      }
+    }
   }
 
   List<List<int>> _generateTicketNumbers(int seed) {
@@ -65,6 +93,7 @@ class _GameScreenState extends State<GameScreen> {
   @override
   void dispose() {
     _numberCallTimer?.cancel();
+    flutterTts.stop(); // Stop TTS when disposing
     super.dispose();
   }
 
@@ -216,10 +245,27 @@ class _GameScreenState extends State<GameScreen> {
 
     setState(() {
       calledNumbers.add(nextNumber);
+      if (isTtsReady) _speakNumber(nextNumber); // Announce only if TTS is ready
     });
 
     if (isNumberCalling && calledNumbers.length < 90) {
       _numberCallTimer = Timer(const Duration(seconds: 15), _callNextNumber);
+    }
+  }
+
+  // Method to speak the called number with error handling
+  Future<void> _speakNumber(int number) async {
+    if (!isTtsReady) return;
+    try {
+      await flutterTts.setLanguage("en-US"); // Ensure language is set
+      await flutterTts.speak("Number $number"); // Speak the number
+    } catch (e) {
+      print("TTS Speak Error: $e"); // Log error for debugging
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to announce number. Check TTS settings.')),
+        );
+      }
     }
   }
 

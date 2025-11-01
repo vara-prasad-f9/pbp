@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pbp/screens/admin_game_dashboard.dart';
+import 'package:pbp/services/room_service.dart';
 import '../models/user.dart';
 import 'login_screen.dart';
-import 'game_screen.dart';
 import 'game_setup_screen.dart';
-import 'join_game_screen.dart';
 
 class AdminHomeScreen extends StatelessWidget {
   const AdminHomeScreen({super.key});
@@ -15,7 +15,7 @@ class AdminHomeScreen extends StatelessWidget {
     await prefs.remove('auth_token');
     await prefs.remove('user_phone');
     await prefs.remove('is_admin');
-    await prefs.remove('hasCreatedGame');
+    await prefs.remove('admin_room_id');
 
     if (context.mounted) {
       Navigator.pushReplacement(
@@ -27,7 +27,12 @@ class AdminHomeScreen extends StatelessWidget {
 
   Future<void> _cancelGame(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('hasCreatedGame');
+    final roomId = prefs.getString('admin_room_id');
+    if (roomId != null) {
+      await RoomService().removeRoom(roomId);
+      await prefs.remove('admin_room_id');
+    }
+    
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Game cancelled successfully')),
@@ -46,11 +51,19 @@ class AdminHomeScreen extends StatelessWidget {
 
   Future<bool> _hasCreatedGame() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool('hasCreatedGame') ?? false;
+    final roomId = prefs.getString('admin_room_id');
+    if (roomId == null) return false;
+    
+    final roomService = RoomService();
+    final room = roomService.getRoom(roomId);
+    if (room == null) {
+      await prefs.remove('admin_room_id');
+      return false;
+    }
+    return true;
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildHomeScreen(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -68,78 +81,41 @@ class AdminHomeScreen extends StatelessWidget {
         ],
       ),
       body: FutureBuilder(
-        future: Future.wait([_getCurrentUser(), _hasCreatedGame()]),
-        builder: (context, AsyncSnapshot<List<dynamic>> snapshot) {
+        future: _getCurrentUser(),
+        builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final user = snapshot.data?[0] as User?;
-          final hasCreatedGame = snapshot.data?[1] as bool? ?? false;
+          final user = snapshot.data;
           final isAdmin = user?.isAdmin ?? false;
 
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: hasCreatedGame
-                  ? [
-                      _buildActionButton(
-                        context,
-                        icon: Icons.info_outline,
-                        label: 'View Game Details',
-                        onTap: () {
-                          if (context.mounted) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const GameScreen(
-                                  roomId: 'created_game_id', // Placeholder; replace with actual ID
-                                  ticketIds: [1, 2, 3, 4, 5, 6], playerId: 'player_id', // Default to T1-T6; adjust as needed
-                                ),
-                              ),
-                            );
-                          }
-                        },
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const GameSetupScreen(),
                       ),
-                      const SizedBox(height: 20),
-                      _buildActionButton(
-                        context,
-                        icon: Icons.cancel,
-                        label: 'Cancel Game',
-                        onTap: () => _cancelGame(context),
-                      ),
-                    ]
-                  : [
-                      _buildActionButton(
-                        context,
-                        icon: Icons.add_circle_outline,
-                        label: 'Create Game',
-                        onTap: () {
-                          if (context.mounted) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const GameSetupScreen()),
-                            );
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 20),
-                      _buildActionButton(
-                        context,
-                        icon: Icons.login,
-                        label: 'Join Game',
-                        isEnabled: !isAdmin,
-                        disabledTooltip: 'Admin users cannot join games',
-                        onTap: () {
-                          if (context.mounted && !isAdmin) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const JoinGameScreen()),
-                            );
-                          }
-                        },
-                      ),
-                    ],
+                    );
+                  },
+                  child: const Text('Create New Game'),
+                ),
+                const SizedBox(height: 20),
+                if (isAdmin)
+                  ElevatedButton(
+                    onPressed: () => _cancelGame(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Cancel Current Game'),
+                  ),
+              ],
             ),
           );
         },
@@ -147,42 +123,44 @@ class AdminHomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButton(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-    bool isEnabled = true,
-    String? disabledTooltip,
-  }) {
-    final button = SizedBox(
-      width: 200,
-      child: ElevatedButton.icon(
-        onPressed: isEnabled ? onTap : null,
-        icon: Icon(icon, size: 24),
-        label: Text(
-          label,
-          style: GoogleFonts.poppins(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
-    );
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: _hasCreatedGame(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Loading...')),
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
 
-    if (!isEnabled && disabledTooltip != null) {
-      return Tooltip(
-        message: disabledTooltip,
-        child: button,
-      );
-    }
-    
-    return button;
+        final hasActiveGame = snapshot.data ?? false;
+        
+        if (hasActiveGame) {
+          return FutureBuilder<String?>(
+            future: SharedPreferences.getInstance()
+                .then((prefs) => prefs.getString('admin_room_id')),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return Scaffold(
+                  appBar: AppBar(title: const Text('Loading...')),
+                  body: const Center(child: CircularProgressIndicator()),
+                );
+              }
+              
+              final roomId = snapshot.data;
+              if (roomId == null) {
+                return _buildHomeScreen(context);
+              }
+              
+              return AdminGameDashboard(roomId: roomId);
+            },
+          );
+        }
+        
+        return _buildHomeScreen(context);
+      },
+    );
   }
 }

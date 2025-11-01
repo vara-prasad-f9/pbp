@@ -3,6 +3,8 @@ import 'package:pbp/models/prize_details.dart';
 import 'package:pbp/models/player.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 class RoomService {
   // -------------------------------------------------
   // Singleton
@@ -13,6 +15,24 @@ class RoomService {
 
   final Map<String, Room> _rooms = {};
   final _uuid = const Uuid();
+  static const String _roomIdKey = 'admin_room_id';
+
+  Future<void> persistRoomId(String roomId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_roomIdKey, roomId);
+  }
+
+  Future<String?> getPersistedRoomId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_roomIdKey);
+  }
+
+  Future<void> clearPersistedRoomId() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_roomIdKey);
+  }
+  
+  // Removed duplicate removeRoom method
 
   // -------------------------------------------------
   // Public API
@@ -21,13 +41,13 @@ class RoomService {
     return _uuid.v4().substring(0, 6).toUpperCase();
   }
 
-  Room createRoom({
+  Future<Room> createRoom({
     required String hostId,
     required String hostName,
     required String gameType,
     required int playerCount,
     required MoneyPrizes moneyPrizes,
-  }) {
+  }) async {
     final roomId = generateRoomCode();
     final room = Room(
       id: roomId,
@@ -53,6 +73,7 @@ class RoomService {
     );
 
     _rooms[roomId] = room;
+    await persistRoomId(roomId);
     return room;
   }
 
@@ -104,5 +125,11 @@ class RoomService {
     _rooms[roomId] = room.copyWith(players: newList);
   }
 
-  void removeRoom(String roomId) => _rooms.remove(roomId);
+  Future<bool> removeRoom(String roomId) async {
+    final removed = _rooms.remove(roomId) != null;
+    if (removed) {
+      await clearPersistedRoomId();
+    }
+    return removed;
+  }
 }

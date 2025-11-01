@@ -28,6 +28,7 @@ class DummyRoomGenerator {
       name: hostName,
       isHost: true,
       isReady: true,
+      ticketNumber: 'HOST',
       joinedAt: now,
     );
 
@@ -60,7 +61,7 @@ class DummyRoomGenerator {
         isHost: false,
         isReady: i % 2 == 0, // Every other player is ready
         joinedAt: now.add(Duration(minutes: i)),
-        roomId: roomId,
+        roomId: roomId, ticketNumber: 'TKT-${i + 1}',
       ));
     }
     

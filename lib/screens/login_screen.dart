@@ -87,24 +87,32 @@ class _LoginScreenState extends State<LoginScreen> {
       // Navigate based on user type
       if (user.isAdmin) {
         // Check if this admin has an active room
-        final roomId = await prefs.getString('admin_room_id');
+        final roomId = prefs.getString('admin_room_id');
         
         if (roomId != null && roomId.isNotEmpty) {
           // Admin has an active room, show game dashboard
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => AdminGameDashboard(
-                roomId: roomId,
+          if (mounted) {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(
+                builder: (_) => AdminGameDashboard(
+                  roomId: roomId,
+                ),
               ),
-            ),
-          );
+              (route) => false, // Remove all previous routes
+            );
+          }
         } else {
-          // No active room, show admin home
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const AdminHomeScreen()),
-          );
+          // No active room, go to admin home
+          if (mounted) {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const AdminHomeScreen(),
+              ),
+              (route) => false, // Remove all previous routes
+            );
+          }
         }
       } else {
         // Regular user flow

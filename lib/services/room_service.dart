@@ -4,16 +4,19 @@ import 'package:pbp/models/player.dart';
 import 'package:uuid/uuid.dart';
 
 class RoomService {
+  // -------------------------------------------------
+  // Singleton
+  // -------------------------------------------------
   static final RoomService _instance = RoomService._internal();
+  factory RoomService() => _instance;
+  RoomService._internal();
+
   final Map<String, Room> _rooms = {};
   final _uuid = const Uuid();
 
-  factory RoomService() {
-    return _instance;
-  }
-
-  RoomService._internal();
-
+  // -------------------------------------------------
+  // Public API
+  // -------------------------------------------------
   String generateRoomCode() {
     return _uuid.v4().substring(0, 6).toUpperCase();
   }
@@ -44,6 +47,7 @@ class RoomService {
           name: hostName,
           isHost: true,
           isReady: true,
+          ticketNumber: 'HOST',   // host has no ticket
         ),
       ],
     );
@@ -52,54 +56,53 @@ class RoomService {
     return room;
   }
 
-  Room? getRoom(String roomId) {
-    return _rooms[roomId];
-  }
+  Room? getRoom(String roomId) => _rooms[roomId];
 
-  void addJoinRequest(String roomId, String userId, String userName) {
+  // -------------------------------------------------
+  // Player joins directly (no approval flow for MVP)
+  // -------------------------------------------------
+  bool addPlayer({
+    required String roomId,
+    required String userId,
+    required String name,
+    required String phone,
+    required List<int> ticketIds,   // e.g. [1,3,5]
+  }) {
     final room = _rooms[roomId];
-    if (room != null) {
-      final request = JoinRequest(userId: userId, userName: userName);
-      _rooms[roomId] = room.copyWith(
-        joinRequests: [...room.joinRequests, request],
-      );
-    }
+    if (room == null) return false;
+    if (room.players.length >= room.prizeDetails.playerCount) return false;
+
+    // Generate a single ticket number for the UI (you can change logic)
+    final ticketNumber = 'TKT-${ticketIds.map((e) => e.toString().padLeft(2, '0')).join('-')}';
+
+    final player = Player(
+      id: userId,
+      name: name,
+      phone: phone,
+      isHost: false,
+      isReady: true,
+      ticketNumber: ticketNumber,
+    );
+
+    _rooms[roomId] = room.copyWith(players: [...room.players, player]);
+    return true;
   }
 
-  void handleJoinRequest(String roomId, String userId, bool isApproved) {
+  // -------------------------------------------------
+  // Optional: increment wins
+  // -------------------------------------------------
+  void incrementWin(String roomId, String playerId, String winType) {
     final room = _rooms[roomId];
-    if (room != null) {
-      final updatedRequests = room.joinRequests.map((request) {
-        if (request.userId == userId) {
-          return request.copyWith(isApproved: isApproved);
-        }
-        return request;
-      }).toList();
+    if (room == null) return;
+    final idx = room.players.indexWhere((p) => p.id == playerId);
+    if (idx == -1) return;
 
-      _rooms[roomId] = room.copyWith(joinRequests: updatedRequests);
-
-      if (isApproved) {
-        final request = room.joinRequests.firstWhere((r) => r.userId == userId);
-        final player = Player(
-          id: userId,
-          name: request.userName,
-          isHost: false,
-          isReady: false,
-        );
-        _rooms[roomId] = room.copyWith(
-          players: [...room.players, player],
-        );
-      }
-    }
+    final p = room.players[idx];
+    final newWins = [...p.wins, winType];
+    final updated = p.copyWith(wins: newWins);
+    final newList = [...room.players]..[idx] = updated;
+    _rooms[roomId] = room.copyWith(players: newList);
   }
 
-  bool isRoomFull(String roomId) {
-    final room = _rooms[roomId];
-    if (room == null) return true;
-    return room.players.length >= room.prizeDetails.playerCount;
-  }
-
-  void removeRoom(String roomId) {
-    _rooms.remove(roomId);
-  }
+  void removeRoom(String roomId) => _rooms.remove(roomId);
 }

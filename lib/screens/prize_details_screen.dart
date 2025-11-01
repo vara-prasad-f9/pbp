@@ -1,8 +1,9 @@
 // ignore_for_file: unused_element
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pbp/models/prize_details.dart';
-import 'package:pbp/screens/room_created_screen.dart';
+import 'package:pbp/screens/admin_game_dashboard.dart';
 
 class PrizeDetailsScreen extends StatefulWidget {
   final String gameType;
@@ -35,24 +36,67 @@ class _PrizeDetailsScreenState extends State<PrizeDetailsScreen> {
     ]);
   }
 
-  void _createRoom() {
+  Future<void> _createRoom() async {
     // Validate the form if on money tab
-    if (_selectedTab == 0 && _formKey.currentState?.validate() != true) {
-      return;
+    if (_selectedTab == 0) {
+      // First validate the form fields
+      if (_formKey.currentState?.validate() != true) {
+        return;
+      }
+      
+      // Then validate that required fields have non-zero values
+      if (_moneyPrizes.firstJaldiFive == null || _moneyPrizes.firstJaldiFive! <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid amount for First Jaldi Five')),
+        );
+        return;
+      }
+      
+      if (_moneyPrizes.firstTopLine == null || _moneyPrizes.firstTopLine! <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid amount for First Top Line')),
+        );
+        return;
+      }
+      
+      if (_moneyPrizes.firstMiddleLine == null || _moneyPrizes.firstMiddleLine! <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid amount for First Middle Line')),
+        );
+        return;
+      }
+      
+      if (_moneyPrizes.firstLastLine == null || _moneyPrizes.firstLastLine! <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid amount for First Last Line')),
+        );
+        return;
+      }
+      
+      if (_moneyPrizes.firstHousy == null || _moneyPrizes.firstHousy! <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid amount for First Housy')),
+        );
+        return;
+      }
     }
     
-    // Navigate to RoomCreatedScreen with the current prize details
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => RoomCreatedScreen(
-          roomId: 'ABC123', // This will be overridden by the generated ID
-          gameType: widget.gameType,
-          playerCount: widget.playerCount,
-          moneyPrizes: _moneyPrizes,
+    // Save room ID to indicate admin has an active room
+    final prefs = await SharedPreferences.getInstance();
+    final roomId = 'RM${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+    await prefs.setString('admin_room_id', roomId);
+    
+    if (mounted) {
+      // Navigate to AdminGameDashboard
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AdminGameDashboard(
+            roomId: roomId,
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
 
   @override
@@ -223,12 +267,27 @@ class _PrizeDetailsScreenState extends State<PrizeDetailsScreen> {
           labelText: label,
           border: const OutlineInputBorder(),
           prefixText: '₹ ',
+          hintText: '0.00',
         ),
         keyboardType: TextInputType.numberWithOptions(decimal: true),
         onChanged: onChanged,
         validator: (value) {
-          if (value == null || value.isEmpty) return null;
-          if (double.tryParse(value) == null) return 'Enter a valid number';
+          if (value == null || value.isEmpty) {
+            // Only validate required fields if they are empty
+            if (label == 'First Jaldi Five' || 
+                label == 'First Top Line' || 
+                label == 'First Middle Line' || 
+                label == 'First Last Line' || 
+                label == 'First Housy') {
+              return 'This field is required';
+            }
+            return null;
+          }
+          
+          final amount = double.tryParse(value);
+          if (amount == null) return 'Enter a valid number';
+          if (amount < 0) return 'Amount cannot be negative';
+          
           return null;
         },
       ),

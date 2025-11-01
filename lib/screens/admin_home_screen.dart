@@ -94,7 +94,7 @@ class AdminHomeScreen extends StatelessWidget {
                               MaterialPageRoute(
                                 builder: (context) => const GameScreen(
                                   roomId: 'created_game_id', // Placeholder; replace with actual ID
-                                  ticketIds: [1, 2, 3, 4, 5, 6], // Default to T1-T6; adjust as needed
+                                  ticketIds: [1, 2, 3, 4, 5, 6], playerId: 'player_id', // Default to T1-T6; adjust as needed
                                 ),
                               ),
                             );

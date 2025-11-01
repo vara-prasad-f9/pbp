@@ -16,7 +16,7 @@ class GameScreen extends StatefulWidget {
   const GameScreen({
     Key? key,
     required this.roomId,
-    required this.ticketIds,
+    required this.ticketIds, required String playerId,
   }) : super(key: key);
 
   @override
